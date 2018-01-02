@@ -1,0 +1,67 @@
+---
+title: "Practical Machine Learning - Prediction Assignment Writeup"
+author: "Jose Fernandez Vizoso"
+date: "31 December 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+This project  will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+The goal of this project is to create a model to predict the manner in which they did the exercise, that is, the classe property in the provided datasets.
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+Let's start by loading the data and take a look at the classe property we are interested in.
+```{r }
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+table(training$classe)
+
+```
+
+The variable we are trying to predict is categorical, so trees or Random Forest seems like a good option for a prediction model. We will go with Random Forests.
+
+First, remove the columns with NA values, because they cannot be used in the rf training
+
+```{r }
+training<- training[ , colSums(is.na(training)) == 0]
+testing<- testing[ , colSums(is.na(testing)) == 0]
+```
+
+
+And then create a model using the resulting dataset. Use cross-validation during the model training. 
+```{r cache=TRUE}
+library(caret)
+set.seed(12345)
+rfmodel <- train(classe~., method="rf", data=training, number=4,
+                 trControl=trainControl(method='cv'), allowParalell = TRUE )
+
+```
+
+Now let's predict the results of the testing dataset
+
+```{r }
+testpredictions=predict(rfmodel, newdata=testing)
+print(testpredictions)
+```
+
+
+```{r }
+
+confusionMatrix(testing$classe,testpreditions)
+```

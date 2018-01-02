@@ -1,0 +1,81 @@
+---
+title: "Practical Machine Learning - Prediction Assignment Writeup"
+author: "Jose Fernandez Vizoso"
+date: "31 December 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+This project  will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+The goal of this project is to create a model to predict the manner in which they did the exercise, that is, the classe property in the provided datasets.
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+Let's start by loading the data and take a look at the classe property we are interested in.
+```{r }
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+table(training$classe)
+
+```
+
+The variable we are trying to predict is categorical, so trees or Random Forest seems like a good option for a prediction model. We will go with Random Forest.
+
+First, remove the columns with NA values, because they cannot be used in the rf training. X column is removed also, because it represents the index of each value on training and test sets, with no real meaning.
+
+Training dataset is split in two. We reserve part of the dataset for validation
+```{r echo=FALSE}
+library(caret)
+library(randomForest)
+```
+
+```{r }
+set.seed(12345)
+
+training<- training[ , colSums(is.na(testing)) == 0]
+testing<- testing[ , colSums(is.na(testing)) == 0]
+training<- training[, names(training)!="X"]
+testing<- testing[, names(testing)!="X"]
+trainidx<- createDataPartition(training$classe, p=0.7, list=FALSE)
+trainingonly<- training[trainidx, ]
+validation <- training[-trainidx, ]
+
+dim(trainingonly) 
+dim(validation)
+```
+
+
+Create a model using the resulting dataset. Use cross-validation during the model training. Get the confussion matrix using the validation dataset.
+```{r cache=TRUE}
+rfmodel <- train(classe~., method="rf", data=trainingonly, number=4,
+                 trControl=trainControl(method='cv')) #, allowParalell = TRUE )
+
+validationpredictions=predict(rfmodel, newdata=validation)
+confusionMatrix(validation$classe,validationpredictions)
+```
+
+The accuracy on the validation dataset is quite high, very near 100%. The out-of-sample error is 1-accuracy, so almost zero.
+
+Now we can use the rfmodel to predict the classe value of the testing dataset
+
+```{r }
+testpredictions=predict(rfmodel, newdata=testing)
+print(testpredictions)
+```
+
+
